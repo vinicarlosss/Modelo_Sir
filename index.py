@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mplcursors
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import LinearRegression
+import math
 
 scaler = MinMaxScaler()
 caminho_arquivo = './data/data.xlsx'
@@ -16,7 +18,7 @@ for i in range(7, 60):
     if i == 59:
         df = df.rename(columns={f'Unnamed: {i}': 'Total'})
     else:
-        df = df.rename(columns={f'Unnamed: {i}': f'S{semana}'})
+        df = df.rename(columns={f'Unnamed: {i}': semana})
         semana += 1
 linha_sp = df.loc[df['Regiao'] == 'SÃO PAULO']
 semanas_infectados = pd.DataFrame()
@@ -26,16 +28,36 @@ beta = 0.375 #taxa de contágio
 gama = 1/6
 
 for i in range(1, 53):
-    semanas_infectados[f'S{i}'] = linha_sp[f'S{i}']
+    semanas_infectados[i] = linha_sp[i]
 
-  #número de habitantes
+
+semanas = semanas_infectados.columns.tolist()
 infectados = np.array(semanas_infectados.values.tolist()).flatten().tolist()
 sucetiveis = [N-infectados[0]]
 recuperados = [0]
-for i in range(len(infectados)-1):
-    sucetiveis.append(sucetiveis[i]*(1-beta*infectados[i]/N))
-    recuperados.append(recuperados[i]+gama*infectados[i])
-
+count = 0
+elements_count = 10
+while count < 5:
+    y = []
+    X = []
+    for i in range(elements_count - 10, elements_count):
+        y.append(semanas[i])
+        X.append(infectados[i])
+    X = np.array(X).reshape(-1,1)
+    y = np.array(y)
+    y = [math.log(i) for i in y]
+    modelo = LinearRegression()
+    modelo.fit(X, y)
+    a = modelo.intercept_
+    b = modelo.coef_[0]
+    beta = b +  gama
+    for i in range(elements_count - 10, elements_count):
+        sucetiveis.append(sucetiveis[i]*(1-beta*infectados[i]/N))
+        recuperados.append(recuperados[i]+gama*infectados[i])
+    elements_count = elements_count + 10
+    count += 1
+sucetiveis.append(sucetiveis[50]*(1-beta*infectados[50]/N))
+recuperados.append(recuperados[50]+gama*infectados[50])
 valores_sucetiveis_normalizados = scaler.fit_transform([[v] for v in sucetiveis])
 valores_infectados_normalizados = scaler.fit_transform([[v] for v in infectados])
 valores_recuperados_normalizados = scaler.fit_transform([[v] for v in recuperados])
@@ -61,12 +83,12 @@ fig.suptitle('Modelo Epidemiológico - Sucetíveis, Infectados e Recuperados')
 '''
 
 #Gráfico com todas as linhas juntas
-#plt.plot(semanas_infectados.columns.tolist(), sucetiveis, label="Sucetíveis", color='green', marker='.')
-plt.plot(semanas_infectados.columns.tolist(), infectados, label="Infectados", color='red', marker='.')
-#plt.plot(semanas_infectados.columns.tolist(), valores_recuperados_normalizados, label="Recuperados", color='blue', marker='.')
+plt.plot(semanas, valores_sucetiveis_normalizados, label="Sucetíveis", color='green', marker='.')
+plt.plot(semanas, valores_infectados_normalizados, label="Infectados", color='red', marker='.')
+plt.plot(semanas, valores_recuperados_normalizados, label="Recuperados", color='blue', marker='.')
 plt.xlabel('Semanas')
 plt.ylabel('Pessoas')
-plt.title('Gráfico de pessoas infectadas ao longo do tempo')
+plt.title('Modelo Epidemiológico - Sucetíveis, Infectados e Recuperados')
 plt.xticks(rotation=45, ha='right')
 mplcursors.cursor(hover=True)
 
