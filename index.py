@@ -1,11 +1,9 @@
 import pandas as pd
-import chardet
 import matplotlib.pyplot as plt
 import numpy as np
 import mplcursors
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
-import math
 
 scaler = MinMaxScaler()
 caminho_arquivo = './data/data.xlsx'
@@ -24,7 +22,6 @@ linha_sp = df.loc[df['Regiao'] == 'SÃO PAULO']
 semanas_infectados = pd.DataFrame()
 
 N = 11451245
-beta = 0.375 #taxa de contágio
 gama = 1/6
 
 for i in range(1, 53):
@@ -37,6 +34,7 @@ sucetiveis = [N-infectados[0]]
 recuperados = [0]
 count = 0
 elements_count = 10
+beta_array = []
 while count < 5:
     y = []
     X = []
@@ -45,12 +43,12 @@ while count < 5:
         X.append(infectados[i])
     X = np.array(X).reshape(-1,1)
     y = np.array(y)
-    y = [math.log(i) for i in y]
     modelo = LinearRegression()
     modelo.fit(X, y)
-    a = modelo.intercept_
     b = modelo.coef_[0]
     beta = b +  gama
+    beta_array.append(beta)
+    print(beta)
     for i in range(elements_count - 10, elements_count):
         sucetiveis.append(sucetiveis[i]*(1-beta*infectados[i]/N))
         recuperados.append(recuperados[i]+gama*infectados[i])
@@ -58,6 +56,7 @@ while count < 5:
     count += 1
 sucetiveis.append(sucetiveis[50]*(1-beta*infectados[50]/N))
 recuperados.append(recuperados[50]+gama*infectados[50])
+
 valores_sucetiveis_normalizados = scaler.fit_transform([[v] for v in sucetiveis])
 valores_infectados_normalizados = scaler.fit_transform([[v] for v in infectados])
 valores_recuperados_normalizados = scaler.fit_transform([[v] for v in recuperados])
@@ -86,9 +85,11 @@ fig.suptitle('Modelo Epidemiológico - Sucetíveis, Infectados e Recuperados')
 plt.plot(semanas, valores_sucetiveis_normalizados, label="Sucetíveis", color='green', marker='.')
 plt.plot(semanas, valores_infectados_normalizados, label="Infectados", color='red', marker='.')
 plt.plot(semanas, valores_recuperados_normalizados, label="Recuperados", color='blue', marker='.')
+#plt.plot(['S10', 'S20', 'S30', 'S40', 'S50'], beta_array, label="beta", color='blue', marker='.')
+
 plt.xlabel('Semanas')
-plt.ylabel('Pessoas')
-plt.title('Modelo Epidemiológico - Sucetíveis, Infectados e Recuperados')
+plt.ylabel('Beta')
+plt.title('Modelo Epidemiológico - beta')
 plt.xticks(rotation=45, ha='right')
 mplcursors.cursor(hover=True)
 
